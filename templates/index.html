@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Weather Data Analysis System</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<header class="topbar">
+  <a class="brand" href="/">☁ Weather Insights</a>
+  <nav><a href="#dashboard">Dashboard</a><a href="#upload">Upload CSV</a><a href="#reports">Reports</a><a href="#quality">Data Quality</a><a href="#about">About</a></nav>
+</header>
+
+<section class="hero">
+  <p class="eyebrow">WEATHER DATA ANALYSIS SYSTEM</p>
+  <h1>Explore weather.<br><span>Discover patterns.</span></h1>
+  <p>Analyze recorded temperature, humidity and rainfall observations with daily and monthly reports.</p>
+  <a class="hero-button" href="#dashboard">View dashboard ↓</a>
+  <p class="scope-note">Historical data analysis only — this website does not forecast weather.</p>
+</section>
+
+<main>
+{% with messages = get_flashed_messages() %}
+  {% if messages %}<div class="messages">{% for message in messages %}<p>{{ message }}</p>{% endfor %}</div>{% endif %}
+{% endwith %}
+
+<section id="upload" class="section upload-section">
+  <div><p class="eyebrow">YOUR DATA</p><h2>Upload weather CSV</h2>
+  <p class="muted">Required columns: record_id, observation_date, location, temperature, humidity, rainfall.</p></div>
+  <form method="post" enctype="multipart/form-data" class="upload-form">
+    <input type="file" name="weather_file" accept=".csv" required>
+    <button type="submit">Upload and analyze</button>
+  </form>
+  <p class="hint">Current dataset: <strong>{{ data_name }}</strong>. Uploading a new file replaces the current uploaded dataset.</p>
+</section>
+
+<section id="dashboard" class="section">
+  <div class="section-heading">
+    <div><p class="eyebrow">OVERVIEW</p><h2>Weather dashboard</h2></div>
+    <form method="get" class="filter">
+      <label for="city">Filter by location</label>
+      <select id="city" name="city" onchange="this.form.submit()">
+        <option value="All" {% if selected_city == "All" %}selected{% endif %}>All locations</option>
+        {% for city in cities %}<option value="{{ city }}" {% if selected_city == city %}selected{% endif %}>{{ city }}</option>{% endfor %}
+      </select>
+    </form>
+  </div>
+  <div class="cards">
+    <article class="stat-card"><span>🌡 Average temperature</span><strong>{{ avg_temp }} °C</strong><small>Mean of valid observations</small></article>
+    <article class="stat-card"><span>💧 Average humidity</span><strong>{{ avg_humidity }}%</strong><small>Mean of valid observations</small></article>
+    <article class="stat-card"><span>🌧 Total rainfall</span><strong>{{ total_rain }} mm</strong><small>Sum of valid observations</small></article>
+    <article class="stat-card"><span>📍 Valid records</span><strong>{{ records }}</strong><small>Records in selected location</small></article>
+  </div>
+</section>
+
+<section id="reports" class="section">
+  <p class="eyebrow">DATA VISUALIZATION</p><h2>Weather trends and comparisons</h2>
+  {% if charts %}
+  <div class="chart-grid">
+    <article class="chart-card"><h3>Temperature trend</h3><p class="muted">Daily average temperature · °C · selected location(s)</p><img src="{{ url_for('static', filename='charts/' + charts.temperature) }}" alt="Temperature trend chart"></article>
+    <article class="chart-card"><h3>Monthly rainfall</h3><p class="muted">Total rainfall · mm · selected location(s)</p><img src="{{ url_for('static', filename='charts/' + charts.rainfall) }}" alt="Monthly rainfall chart"></article>
+    <article class="chart-card full"><h3>Monthly temperature and rainfall comparison</h3><p class="muted">Average temperature (°C) and total rainfall (mm) · selected location(s)</p><img src="{{ url_for('static', filename='charts/' + charts.comparison) }}" alt="Monthly temperature and rainfall comparison chart"></article>
+  </div>
+  {% else %}<p class="empty">No valid records are available for this location. Upload a CSV with valid data.</p>{% endif %}
+</section>
+
+<section class="section table-section">
+  <p class="eyebrow">DAILY STATISTICS</p><h2>Daily weather summary</h2>
+  <p class="muted">Showing up to the latest 15 dates. Temperature in °C, humidity in %, rainfall in mm.</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Date</th><th>Min temp</th><th>Max temp</th><th>Avg temp</th><th>Min humidity</th><th>Max humidity</th><th>Avg humidity</th><th>Rainfall</th></tr></thead>
+    <tbody>{% for row in daily %}<tr><td>{{ row.date }}</td><td>{{ "%.1f"|format(row.min_temp) }}</td><td>{{ "%.1f"|format(row.max_temp) }}</td><td>{{ "%.1f"|format(row.avg_temp) }}</td><td>{{ "%.1f"|format(row.min_humidity) }}</td><td>{{ "%.1f"|format(row.max_humidity) }}</td><td>{{ "%.1f"|format(row.avg_humidity) }}</td><td>{{ "%.1f"|format(row.total_rain) }}</td></tr>{% else %}<tr><td colspan="8">No valid daily data.</td></tr>{% endfor %}</tbody>
+  </table></div>
+</section>
+
+<section class="section table-section">
+  <p class="eyebrow">MONTHLY STATISTICS</p><h2>Monthly weather summary</h2>
+  <p class="muted">Minimum, maximum and average values are calculated from valid records. Rainfall is summed.</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Month</th><th>Min temp °C</th><th>Max temp °C</th><th>Avg temp °C</th><th>Min humidity %</th><th>Max humidity %</th><th>Avg humidity %</th><th>Total rain mm</th></tr></thead>
+    <tbody>{% for row in monthly %}<tr><td>{{ row.month }}</td><td>{{ "%.1f"|format(row.min_temp) }}</td><td>{{ "%.1f"|format(row.max_temp) }}</td><td>{{ "%.1f"|format(row.avg_temp) }}</td><td>{{ "%.1f"|format(row.min_humidity) }}</td><td>{{ "%.1f"|format(row.max_humidity) }}</td><td>{{ "%.1f"|format(row.avg_humidity) }}</td><td>{{ "%.1f"|format(row.total_rain) }}</td></tr>{% else %}<tr><td colspan="8">No valid monthly data.</td></tr>{% endfor %}</tbody>
+  </table></div>
+</section>
+
+<section id="quality" class="section quality-section">
+  <p class="eyebrow">TRANSPARENCY</p><h2>Data quality report</h2>
+  <p class="muted">Blank cells are counted as missing. Non-empty values that cannot be parsed or are outside the accepted range are counted as invalid. A row is excluded if a required field is missing or invalid.</p>
+  <div class="quality-cards">
+    <div><span>Total rows</span><strong>{{ quality.total_rows }}</strong></div>
+    <div><span>Valid rows</span><strong>{{ quality.valid_rows }}</strong></div>
+    <div><span>Excluded rows</span><strong>{{ quality.excluded_rows }}</strong></div>
+    <div><span>Duplicate rows removed</span><strong>{{ quality.duplicate_rows }}</strong></div>
+  </div>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Field</th><th>Missing values</th><th>Invalid values</th></tr></thead>
+    <tbody>
+      {% for field in ["record_id", "observation_date", "location", "temperature", "humidity", "rainfall"] %}
+      <tr><td>{{ field }}</td><td>{{ quality[field].missing }}</td><td>{{ quality[field].invalid }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table></div>
+  <p class="hint">Validation ranges: temperature −90 to 60 °C; humidity 0 to 100%; rainfall must be 0 mm or greater. Dates must be recognizable dates.</p>
+</section>
+
+<section id="about" class="section about">
+  <p class="eyebrow">PROJECT INFORMATION</p><h2>About this project</h2>
+  <p>This beginner-level project analyzes supplied or public historical weather observations. It uses Pandas for date parsing and grouping, NumPy for statistics, and Matplotlib for charts. It does not predict or forecast future weather.</p>
+  <div class="tech-list"><span>Python</span><span>Flask</span><span>Pandas</span><span>NumPy</span><span>Matplotlib</span><span>HTML</span><span>CSS</span><span>MySQL schema</span></div>
+</section>
+</main>
+<footer>Weather Data Analysis System · Student Project · Units: °C, %, mm</footer>
+</body>
+</html>
